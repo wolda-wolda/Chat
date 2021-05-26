@@ -1,10 +1,10 @@
-#include <stdio.h>
+#include <sys/types.h>
 #include <winsock.h>
-#include <string.h>
 #include <stdlib.h>
-#include <strings.h>
-
-#define SERVER_PORT 1234
+#include "include/strings.h"
+#include <stdio.h>
+#define BUFFER_SIZE 1000
+#define SERVER_PORT 42069
 
 //TCP Client
 int main() {
