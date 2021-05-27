@@ -22,16 +22,20 @@ static void echo(SOCKET);
 static void echo(SOCKET client_socket) {
 
     char echo_buffer[BUFFER_SIZE];
-    int recv_size;
+    int recv_size = -1;
+    u_long len;
     time_t zeit;
     do {
-        recv_size = recv(client_socket, echo_buffer, BUFFER_SIZE, 0);
-        if (recv_size==0){
-            printf("Client hat die Verbindung getrennt\n");
-        }else{
-            echo_buffer[recv_size] = '\0';
-            time(&zeit);
-            printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
+        ioctlsocket(client_socket, FIONREAD, &len);
+        if (len) {
+            recv_size = recv(client_socket, echo_buffer, BUFFER_SIZE, 0);
+            if (recv_size == 0) {
+                printf("Client hat die Verbindung getrennt\n");
+            } else {
+                echo_buffer[recv_size] = '\0';
+                time(&zeit);
+                printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
+            }
         }
     } while (recv_size!=0);
 }
@@ -41,10 +45,7 @@ static void echo(SOCKET client_socket) {
         SOCKET sock, fd;
         unsigned int len;
         struct sockaddr_in server_addr, client;
-        char buffer[1000];
-        int client_addr_len;
         int retcode;
-        int block;
 
         WORD wVersionRequested = MAKEWORD(1, 1);
         WSADATA wsaData;
@@ -72,14 +73,13 @@ static void echo(SOCKET client_socket) {
             for (;;) {
                 len = sizeof(client);
                 fd = accept(sock, (struct sockaddr *) &client, &len);
-                if (fd < 0)
+                if (fd < 0) {
                     perror("Fehler bei accept");
-                printf("Client verbunden: %s\n", inet_ntoa(client.sin_addr));
-
-                /* Daten vom Client auf dem Bildschirm ausgeben */
-                echo(fd);
-                closesocket(fd);
+                } else {
+                    printf("Client verbunden: %s\n", inet_ntoa(client.sin_addr));
+                    echo(fd);
+                    closesocket(fd);
+                }
             }
         }
-
     }
