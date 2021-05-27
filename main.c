@@ -14,6 +14,7 @@
 
 static void error_exit(char *errorMessage) {
     fprintf(stderr, "%s: %d\n", errorMessage, WSAGetLastError());
+    exit(EXIT_FAILURE);
 }
 
 static void echo(SOCKET);
@@ -25,12 +26,12 @@ static void echo(SOCKET client_socket) {
     time_t zeit;
 
     if ((recv_size = recv(client_socket, echo_buffer, BUFFER_SIZE, 0)) < 0) {
-        error_exit("Fehler bei recv()");
+        printf("Fehler bei recv()");
     }
+
     echo_buffer[recv_size] = '\0';
     time(&zeit);
-    printf("Nachrichten vom Client : %s \t%s",
-           echo_buffer, ctime(&zeit));
+    printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
 }
 
 //TCP Client
