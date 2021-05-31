@@ -11,29 +11,37 @@
 #define SERVER_PORT 42069
 
 static void error_exit(char *errorMessage) {
-    fprintf(stderr,"%s: %d\n", errorMessage, WSAGetLastError());
+    fprintf(stderr, "%s: %d\n", errorMessage, WSAGetLastError());
     exit(EXIT_FAILURE);
 }
-void sen(char buffer[BUFFER_SIZE], SOCKET client){
-    int echo_len=0;
-    bzero(buffer, sizeof*(buffer));
+
+void sen(char buffer[BUFFER_SIZE], SOCKET client) {
+    int echo_len = 0;
+    bzero(buffer, sizeof *(buffer));
     gets(buffer);
     fflush(stdin);
     echo_len = strlen(buffer);
-    if(strcmp(buffer, "exit")==0){
-        closesocket(client);
-        exit(0);
-    }
-    if (send(client, buffer, echo_len, 0) != echo_len){
+    if (send(client, buffer, echo_len, 0) != echo_len) {
         error_exit("send() hat eine andere Anzahl von Bytes versendet als erwartet !!!!");
-    }else{
+    } else {
         time_t zeit;
         time(&zeit);
         printf("An Server gesendet: %s \t%s", buffer, ctime(&zeit));
     }
+    if (strcmp(buffer, "exit") == 0) {
+        closesocket(client);
+        exit(0);
+    }
 }
+
+void sock();
+
 //TCP Client
 int main() {
+    sock();
+}
+
+void sock() {
     SOCKET client;
     struct sockaddr_in server_addr;
     char buffer[BUFFER_SIZE];
