@@ -4,21 +4,25 @@
 #include <errno.h>
 #include <winsock.h>
 #include <windows.h>
-#include <io.h>
 #include "include/strings.h"
-#include <fcntl.h>
 #include <time.h>
+#include <conio.h>
 
 #define BUFFER_SIZE 10000
 #define SERVER_PORT 42069
 
-static void error_exit(char *errorMessage);
+void error_exit(char *errorMessage);
 
-static void echo(SOCKET);
+void echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit);
 
-void sen(SOCKET fd);
+void sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit);
 
 void sock();
+
+int recv_size = -1;
+u_long len;
+int echo_len = 0;
+char firstchar;
 
 //TCP Client
 int main() {
@@ -30,6 +34,8 @@ void sock() {
     unsigned int len;
     struct sockaddr_in server_addr, client;
     int retcode;
+    char echo_buffer[BUFFER_SIZE] = {0};
+    time_t zeit;
 
     WORD wVersionRequested = MAKEWORD(1, 1);
     WSADATA wsaData;
@@ -61,62 +67,67 @@ void sock() {
                 perror("Fehler bei accept");
             } else {
                 printf("Client verbunden: %s\n", inet_ntoa(client.sin_addr));
-                echo(fd);
+                sen(fd, echo_buffer, zeit);
                 closesocket(fd);
             }
         }
     }
 }
 
-static void echo(SOCKET fd) {
+void echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit) {
 
-    char echo_buffer[BUFFER_SIZE];
-    int recv_size = -1;
-    u_long len;
-    time_t zeit;
-
-    do {
-        ioctlsocket(fd, FIONREAD, &len);
-        if (len) {
-            recv_size = recv(fd, echo_buffer, BUFFER_SIZE, 0);
-            if (strcmp(echo_buffer, "exit") == 0) {
-                printf("Client hat die Verbindung getrennt\n");
-                break;
-            } else {
-                echo_buffer[recv_size] = '\0';
-                time(&zeit);
-                printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
-                sen(fd);
-            }
+    bzero(echo_buffer, sizeof *(echo_buffer));
+    ioctlsocket(fd, FIONREAD, &len);
+    if (len) {
+        recv_size = recv(fd, echo_buffer, BUFFER_SIZE, 0);
+        if (strcmp(echo_buffer, "exit") == 0) {
+            printf("Client hat die Verbindung getrennt\n");
+        } else {
+            echo_buffer[recv_size] = '\0';
+            time(&zeit);
+            printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
         }
-
-    } while (recv_size != 0);
+    } else {
+        sen(fd, echo_buffer, zeit);
+    }
 }
 
-void sen(SOCKET fd) {
-    int echo_len = 0;
-    char buffer[BUFFER_SIZE];
+void sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit) {
 
     bzero(buffer, sizeof *(buffer));
-    printf("Nachricht: ");
-    gets(buffer);
-
-    fflush(stdin);
-    echo_len = strlen(buffer);
-    if (send(fd, buffer, echo_len, 0) != echo_len) {
-        error_exit("send() hat eine andere Anzahl von Bytes versendet als erwartet !!!!");
-    } else {
-        time_t zeit;
-        time(&zeit);
-        printf("An Server gesendet: %s \t%s", buffer, ctime(&zeit));
-    }
-    if (strcmp(buffer, "exit") == 0) {
-        closesocket(fd);
-        exit(0);
+    while (1) {
+        if (kbhit()) {
+            firstchar = getch();
+            fgets(buffer, 100, stdin);
+            fflush(stdin);
+            for (int i = 99; i >= 0; i--) {
+                if (buffer[i] != '\000') {
+                    buffer[i + 1] = buffer[i];
+                }
+                if (buffer[i + 1] == '\n') {
+                    buffer[i + 1] = '\000';
+                }
+            }
+            buffer[0] = firstchar;
+            echo_len = strlen(buffer);
+            if (send(fd, buffer, echo_len, 0) != echo_len) {
+                error_exit("send() hat eine andere Anzahl von Bytes versendet als erwartet !!!!");
+            } else {
+                time(&zeit);
+                printf("An Client gesendet: %s \t%s", buffer, ctime(&zeit));
+            }
+            if (strcmp(buffer, "exit") == 0) {
+                closesocket(fd);
+                exit(0);
+            }
+        } else {
+            Sleep(100);
+            echo(fd, buffer, zeit);
+        }
     }
 }
 
-static void error_exit(char *errorMessage) {
+void error_exit(char *errorMessage) {
     fprintf(stderr, "%s: %d\n", errorMessage, WSAGetLastError());
     exit(EXIT_FAILURE);
 }
