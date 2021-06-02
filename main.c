@@ -68,12 +68,12 @@ int echo(SOCKET client,char echo_buffer[BUFFER_SIZE], time_t zeit) {
     ioctlsocket(client, FIONREAD, &len);
     if (len) {
         recv_size = recv(client, echo_buffer, BUFFER_SIZE, 0);
+        echo_buffer[recv_size] = '\0';
         if (strcmp(echo_buffer, "exit") == 0) {
             close=1;
             printf("Server hat die Verbindung getrennt\n");
             return close;
         } else {
-            echo_buffer[recv_size] = '\0';
             time(&zeit);
             printf("Nachrichten vom Server : %s \t%s", echo_buffer, ctime(&zeit));
         }
@@ -103,7 +103,9 @@ int sen(char buffer[BUFFER_SIZE], SOCKET client, time_t zeit) {
             buffer[0] = firstchar;
             echo_len = strlen(buffer);
             if (send(client, buffer, echo_len, 0) != echo_len) {
-                error_exit("send() hat eine andere Anzahl von Bytes versendet als erwartet !!!!");
+                printf("Verbindung zum Server verloren\n");
+                close = 1;
+                return close;
             } else {
                 time(&zeit);
                 printf("An Server gesendet: %s \t%s", buffer, ctime(&zeit));
