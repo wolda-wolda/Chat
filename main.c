@@ -72,6 +72,7 @@ void sock() {
                     }
                 } while (close != 1);
                 closesocket(fd);
+                close = 0;
             }
         }
     }
@@ -85,12 +86,12 @@ int echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit) {
     ioctlsocket(fd, FIONREAD, &len);
     if (len) {
         recv_size = recv(fd, echo_buffer, BUFFER_SIZE, 0);
+        echo_buffer[recv_size] = '\0';
         if (strcmp(echo_buffer, "exit") == 0) {
             printf("Client hat die Verbindung getrennt, warte auf neue Verbindung\n");
             close = 1;
             return close;
         } else {
-            echo_buffer[recv_size] = '\0';
             time(&zeit);
             printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
         }
@@ -121,7 +122,9 @@ int sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit) {
             buffer[0] = firstchar;
             echo_len = strlen(buffer);
             if (send(fd, buffer, echo_len, 0) != echo_len) {
-                error_exit("send() hat eine andere Anzahl von Bytes versendet als erwartet !!!!");
+                printf("Verbindung zum Client verloren,  warte auf neue Verbindung\n");
+                close = 1;
+                return close;
             } else {
                 time(&zeit);
                 printf("An Client gesendet: %s \t%s", buffer, ctime(&zeit));
