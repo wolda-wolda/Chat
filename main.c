@@ -10,18 +10,15 @@
 #define BUFFER_SIZE 1000
 #define SERVER_PORT 42069
 
-void echo(SOCKET client,char buffer[BUFFER_SIZE], time_t zeit);
+int echo(SOCKET client,char buffer[BUFFER_SIZE], time_t zeit);
 
 void error_exit(char *errorMessage);
 
-void sen(char buffer[BUFFER_SIZE], SOCKET client, time_t zeit);
+int sen(char buffer[BUFFER_SIZE], SOCKET client, time_t zeit);
 
 void sock();
 
-int recv_size = -1;
-u_long len;
-int echo_len = 0;
-char firstchar;
+int close=0;
 
 int main() {
     sock();
@@ -49,34 +46,45 @@ void sock() {
     server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     retcode = connect(client, (struct sockaddr *) &server_addr, sizeof(server_addr));
     if (retcode < 0) {
-        printf("Verbindung fehlgeschlagen\n");
+        error_exit("Verbindung fehlgeschlagen\n");
         exit(-1);
     } else {
         printf("Verbindung zu %s:%hu erfolgreich hergestellt.\n", inet_ntoa(server_addr.sin_addr),
                ntohs(server_addr.sin_port));
-        sen(buffer, client, zeit);
+        do{
+            close=sen(buffer, client, zeit);
+            if (close!=1){
+                close=echo(client, buffer, zeit);
+            }
+        }while (close!=1);
     }
 }
 
-void echo(SOCKET client,char echo_buffer[BUFFER_SIZE], time_t zeit) {
+int echo(SOCKET client,char echo_buffer[BUFFER_SIZE], time_t zeit) {
+    int recv_size = -1;
+    u_long len;
 
+    bzero(echo_buffer, sizeof *(echo_buffer));
     ioctlsocket(client, FIONREAD, &len);
     if (len) {
         recv_size = recv(client, echo_buffer, BUFFER_SIZE, 0);
         if (strcmp(echo_buffer, "exit") == 0) {
+            close=1;
             printf("Server hat die Verbindung getrennt\n");
-            exit(0);
+            return close;
         } else {
             echo_buffer[recv_size] = '\0';
             time(&zeit);
             printf("Nachrichten vom Server : %s \t%s", echo_buffer, ctime(&zeit));
         }
     } else {
-        sen(echo_buffer, client, zeit);
+        return close;
     }
 }
 
-void sen(char buffer[BUFFER_SIZE], SOCKET client, time_t zeit) {
+int sen(char buffer[BUFFER_SIZE], SOCKET client, time_t zeit) {
+    char firstchar;
+    int echo_len = 0;
 
     bzero(buffer, sizeof *(buffer));
     while (1) {
@@ -97,17 +105,17 @@ void sen(char buffer[BUFFER_SIZE], SOCKET client, time_t zeit) {
             if (send(client, buffer, echo_len, 0) != echo_len) {
                 error_exit("send() hat eine andere Anzahl von Bytes versendet als erwartet !!!!");
             } else {
-
                 time(&zeit);
                 printf("An Server gesendet: %s \t%s", buffer, ctime(&zeit));
             }
             if (strcmp(buffer, "exit") == 0) {
+                close=1;
                 closesocket(client);
-                exit(0);
+                return close;
             }
         } else {
             Sleep(100);
-            echo(client, buffer, zeit);
+            return close;
         }
     }
 }
