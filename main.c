@@ -13,16 +13,14 @@
 
 void error_exit(char *errorMessage);
 
-void echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit);
+int echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit);
 
-void sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit);
+int sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit);
 
 void sock();
 
-int recv_size = -1;
-u_long len;
-int echo_len = 0;
-char firstchar;
+int close = 0;
+
 
 //TCP Client
 int main() {
@@ -67,34 +65,46 @@ void sock() {
                 perror("Fehler bei accept");
             } else {
                 printf("Client verbunden: %s\n", inet_ntoa(client.sin_addr));
-                sen(fd, echo_buffer, zeit);
+                do {
+                    close = sen(fd, echo_buffer, zeit);
+                    if (close != 1) {
+                        close = echo(fd, echo_buffer, zeit);
+                    }
+                } while (close != 1);
                 closesocket(fd);
             }
         }
     }
 }
 
-void echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit) {
+int echo(SOCKET fd, char echo_buffer[BUFFER_SIZE], time_t zeit) {
+    int recv_size = -1;
+    u_long len;
 
     bzero(echo_buffer, sizeof *(echo_buffer));
     ioctlsocket(fd, FIONREAD, &len);
     if (len) {
         recv_size = recv(fd, echo_buffer, BUFFER_SIZE, 0);
         if (strcmp(echo_buffer, "exit") == 0) {
-            printf("Client hat die Verbindung getrennt\n");
+            printf("Client hat die Verbindung getrennt, warte auf neue Verbindung\n");
+            close = 1;
+            return close;
         } else {
             echo_buffer[recv_size] = '\0';
             time(&zeit);
             printf("Nachrichten vom Client : %s \t%s", echo_buffer, ctime(&zeit));
         }
     } else {
-        sen(fd, echo_buffer, zeit);
+        return close;
     }
 }
 
-void sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit) {
+int sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit) {
+    int echo_len = 0;
+    char firstchar;
 
     bzero(buffer, sizeof *(buffer));
+    fflush(stdin);
     while (1) {
         if (kbhit()) {
             firstchar = getch();
@@ -117,12 +127,13 @@ void sen(SOCKET fd, char buffer[BUFFER_SIZE], time_t zeit) {
                 printf("An Client gesendet: %s \t%s", buffer, ctime(&zeit));
             }
             if (strcmp(buffer, "exit") == 0) {
-                closesocket(fd);
-                exit(0);
+                close = 1;
+                printf("Verbindung wurde getrennt, warte auf neue Verbindung\n");
+                return close;
             }
         } else {
             Sleep(100);
-            echo(fd, buffer, zeit);
+            return close;
         }
     }
 }
