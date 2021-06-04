@@ -1,3 +1,5 @@
+//Copyright (C) 2021 Marcel Walder, Manuel Unterhuber
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
